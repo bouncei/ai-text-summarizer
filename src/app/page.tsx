@@ -12,8 +12,10 @@ import {
   RefreshCw,
   Github,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function Home() {
+// Create a client component wrapper
+const SummarizerContent = () => {
   const [inputText, setInputText] = useState("");
   const [summary, setSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -140,33 +142,52 @@ export default function Home() {
 
   return (
     <>
-      <main className="container mx-auto p-4 max-w-4xl">
-        <h1 className="text-3xl font-bold text-center mb-8">
+      <motion.main
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="container mx-auto p-4 max-w-4xl"
+      >
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="text-3xl font-bold text-center mb-8"
+        >
           AI Text Summarizer
-        </h1>
+        </motion.h1>
 
-        <div className="mb-6 flex flex-wrap gap-2 justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => document.getElementById("file-upload")?.click()}
-          >
-            <FilePlus className="mr-1 h-4 w-4" />
-            Upload File
-            <input
-              id="file-upload"
-              type="file"
-              accept=".txt,.md,.rtf,.doc,.docx,.pdf"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-          </Button>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mb-6 flex flex-wrap gap-2 justify-end"
+        >
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById("file-upload")?.click()}
+            >
+              <FilePlus className="mr-1 h-4 w-4" />
+              Upload File
+              <input
+                id="file-upload"
+                type="file"
+                accept=".txt,.md,.rtf,.doc,.docx,.pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+            </Button>
+          </motion.div>
 
-          <Button variant="outline" size="sm" onClick={clearAll}>
-            <RefreshCw className="mr-1 h-4 w-4" />
-            Clear All
-          </Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button variant="outline" size="sm" onClick={clearAll}>
+              <RefreshCw className="mr-1 h-4 w-4" />
+              Clear All
+            </Button>
+          </motion.div>
+        </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -226,38 +247,65 @@ export default function Home() {
           </div>
         </form>
 
-        {error && (
-          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="mt-4 p-4 bg-red-50 text-red-700 rounded-md"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {summary && (
-          <Card className="mt-8 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Summary</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyToClipboard}
-                className="flex items-center gap-1"
-              >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-                {copied ? "Copied!" : "Copy"}
-              </Button>
-            </div>
-            <p className="whitespace-pre-wrap">{summary}</p>
-            {summary && (
-              <div className="text-xs text-gray-500 mt-4">
-                ~{calculateReadingTime(summary)} min read •{" "}
-                {summary.trim().split(/\s+/).length} words
-              </div>
-            )}
-          </Card>
-        )}
-      </main>
+        <AnimatePresence>
+          {summary && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="mt-8 p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Summary</h2>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyToClipboard}
+                      className="flex items-center gap-1"
+                    >
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                      {copied ? "Copied!" : "Copy"}
+                    </Button>
+                  </motion.div>
+                </div>
+                <p className="whitespace-pre-wrap">{summary}</p>
+                {summary && (
+                  <div className="text-xs text-gray-500 mt-4">
+                    ~{calculateReadingTime(summary)} min read •{" "}
+                    {summary.trim().split(/\s+/).length} words
+                  </div>
+                )}
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.main>
 
-      <footer className="border-t mt-8 py-4">
+      <motion.footer
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="border-t mt-8 py-4"
+      >
         <div className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-600">
@@ -273,11 +321,16 @@ export default function Home() {
               </a>
             </div>
             <div className="text-sm text-gray-500">
-              Powered by OpenAI's GPT-3.5
+              Powered by OpenAI&apos;s GPT-3.5
             </div>
           </div>
         </div>
-      </footer>
+      </motion.footer>
     </>
   );
+};
+
+// Main page component
+export default function Home() {
+  return <SummarizerContent />;
 }
