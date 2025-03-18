@@ -18,7 +18,7 @@ An intelligent text summarization tool powered by OpenAI's GPT-3.5, built with N
 ## 🌟 Features
 
 - **Intelligent Summarization**: Powered by OpenAI's GPT-3.5 model
-- **Multiple Summary Lengths**: Choose between short, medium, or long summaries
+- **Multiple Summary Lengths**: Choose between short, medium, or long summaries.
 - **File Upload Support**: Upload text files directly
 - **Real-time Statistics**: Word count, character count, and estimated reading time
 - **Copy to Clipboard**: One-click copy of generated summaries
