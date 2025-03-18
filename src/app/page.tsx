@@ -1,113 +1,283 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import {
+  Loader2,
+  Copy,
+  Check,
+  FilePlus,
+  RefreshCw,
+  Github,
+} from "lucide-react";
 
 export default function Home() {
+  const [inputText, setInputText] = useState("");
+  const [summary, setSummary] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [summaryLength, setSummaryLength] = useState("medium"); // short, medium, long
+  const [copied, setCopied] = useState(false);
+  const [charCount, setCharCount] = useState(0);
+  const [wordCount, setWordCount] = useState(0);
+
+  // Save state to localStorage
+  useEffect(() => {
+    const savedText = localStorage.getItem("summarizerInputText");
+    const savedSummary = localStorage.getItem("summarizerSummary");
+    const savedLength = localStorage.getItem("summarizerLength");
+
+    if (savedText) setInputText(savedText);
+    if (savedSummary) setSummary(savedSummary);
+    if (savedLength) setSummaryLength(savedLength);
+  }, []);
+
+  // Update counts when text changes
+  useEffect(() => {
+    setCharCount(inputText.length);
+    setWordCount(inputText.trim() ? inputText.trim().split(/\s+/).length : 0);
+
+    // Save to localStorage
+    localStorage.setItem("summarizerInputText", inputText);
+  }, [inputText]);
+
+  // Save summary and length to localStorage
+  useEffect(() => {
+    if (summary) localStorage.setItem("summarizerSummary", summary);
+    localStorage.setItem("summarizerLength", summaryLength);
+  }, [summary, summaryLength]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    if (!inputText.trim()) {
+      setError("Please enter some text to summarize.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if text is too long (rough estimate: 1 token ≈ 4 chars)
+    const estimatedTokenCount = inputText.length / 4;
+    if (estimatedTokenCount > 100000) {
+      setError(
+        "Text is too long. Please reduce the size and try again. (Maximum ~100,000 tokens)"
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/summarize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: inputText,
+          summaryLength,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate summary");
+      }
+
+      const data = await response.json();
+      setSummary(data.summary);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate summary. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(summary);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const calculateReadingTime = (text: string) => {
+    const wordsPerMinute = 200;
+    const words = text.trim().split(/\s+/).length;
+    const readingTime = Math.ceil(words / wordsPerMinute);
+    return readingTime;
+  };
+
+  const clearAll = () => {
+    setInputText("");
+    setSummary("");
+    setError("");
+    localStorage.removeItem("summarizerInputText");
+    localStorage.removeItem("summarizerSummary");
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File is too large. Maximum size is 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setInputText(text);
+    };
+    reader.onerror = () => {
+      setError("Error reading file. Please try again.");
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <>
+      <main className="container mx-auto p-4 max-w-4xl">
+        <h1 className="text-3xl font-bold text-center mb-8">
+          AI Text Summarizer
+        </h1>
+
+        <div className="mb-6 flex flex-wrap gap-2 justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => document.getElementById("file-upload")?.click()}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
+            <FilePlus className="mr-1 h-4 w-4" />
+            Upload File
+            <input
+              id="file-upload"
+              type="file"
+              accept=".txt,.md,.rtf,.doc,.docx,.pdf"
+              className="hidden"
+              onChange={handleFileUpload}
             />
-          </a>
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={clearAll}>
+            <RefreshCw className="mr-1 h-4 w-4" />
+            Clear All
+          </Button>
         </div>
-      </div>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="text" className="text-sm font-medium">
+              Enter your text to summarize
+            </label>
+            <Textarea
+              id="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Paste your text here..."
+              className="min-h-[200px]"
+              required
+            />
+            {inputText && (
+              <div className="text-xs text-gray-500 flex justify-between">
+                <span>
+                  ~{calculateReadingTime(inputText)} min read • {wordCount}{" "}
+                  words
+                </span>
+                <span>{charCount} characters</span>
+              </div>
+            )}
+          </div>
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label
+                htmlFor="summary-length"
+                className="text-sm font-medium block mb-2"
+              >
+                Summary Length
+              </label>
+              <select
+                id="summary-length"
+                value={summaryLength}
+                onChange={(e) => setSummaryLength(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="short">Short (1-2 paragraphs)</option>
+                <option value="medium">Medium (2-3 paragraphs)</option>
+                <option value="long">Long (3-4 paragraphs)</option>
+              </select>
+            </div>
+            <div className="flex-1 flex items-end">
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Summary...
+                  </>
+                ) : (
+                  "Generate Summary"
+                )}
+              </Button>
+            </div>
+          </div>
+        </form>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
+        {summary && (
+          <Card className="mt-8 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Summary</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyToClipboard}
+                className="flex items-center gap-1"
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? "Copied!" : "Copy"}
+              </Button>
+            </div>
+            <p className="whitespace-pre-wrap">{summary}</p>
+            {summary && (
+              <div className="text-xs text-gray-500 mt-4">
+                ~{calculateReadingTime(summary)} min read •{" "}
+                {summary.trim().split(/\s+/).length} words
+              </div>
+            )}
+          </Card>
+        )}
+      </main>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+      <footer className="border-t mt-8 py-4">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Built with ❤️ by{" "}
+              <a
+                href="https://github.com/bouncei"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-1"
+              >
+                Bouncey
+                <Github className="h-4 w-4" />
+              </a>
+            </div>
+            <div className="text-sm text-gray-500">
+              Powered by OpenAI's GPT-3.5
+            </div>
+          </div>
+        </div>
+      </footer>
+    </>
   );
 }
